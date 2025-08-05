@@ -15,12 +15,11 @@ def send_message(text):
     data = {"chat_id": USER_ID, "text": text}
     requests.post(url, data=data)
 
-def handle_command(update):
-    message = update.get('message')
-    if message:
-        text = message.get('text')
-        if text == "/start":
-            send_message("✅ Бот запущен и работает!")
+# --- ОБРАБОТКА КОМАНД ---
+def handle_command(message):
+    text = message.get('text')
+    if text == "/start":
+        send_message("✅ Бот запущен и работает!")
 
 # --- ПРОВЕРКА ЦЕН ---
 def check_wb():
@@ -69,15 +68,23 @@ def check_ozon():
 # --- ЗАПУСК ---
 if __name__ == "__main__":
     send_message("✅ Бот запущен и проверяет цены Samsung A06 каждые 15 минут.")
+    
+    # Получаем обновления от бота (polling)
+    offset = 0
     while True:
         try:
+            # Получаем последние обновления
+            url = f"https://api.telegram.org/bot{BOT_TOKEN}/getUpdates?offset={offset}"
+            response = requests.get(url).json()
+            
+            for update in response.get('result', []):
+                handle_command(update.get('message'))
+                offset = update['update_id'] + 1  # Обновляем offset, чтобы не получать одни и те же обновления
+
             check_wb()
             check_ozon()
-            # Пример получения обновлений от бота (проверка команды /start)
-            url = f"https://api.telegram.org/bot{BOT_TOKEN}/getUpdates"
-            response = requests.get(url).json()
-            for update in response.get('result', []):
-                handle_command(update)
+            
         except Exception as e:
             send_message(f"⚠ Ошибка: {e}")
-        time.sleep(900)  # 15 минут
+        
+        time.sleep(5)  # Пауза в 5 секунд перед следующим запросом
