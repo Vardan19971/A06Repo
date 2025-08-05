@@ -15,6 +15,13 @@ def send_message(text):
     data = {"chat_id": USER_ID, "text": text}
     requests.post(url, data=data)
 
+def handle_command(update):
+    message = update.get('message')
+    if message:
+        text = message.get('text')
+        if text == "/start":
+            send_message("✅ Бот запущен и работает!")
+
 # --- ПРОВЕРКА ЦЕН ---
 def check_wb():
     search_url = "https://www.wildberries.ru/catalog/0/search.aspx?search=samsung%20a06"
@@ -66,6 +73,11 @@ if __name__ == "__main__":
         try:
             check_wb()
             check_ozon()
+            # Пример получения обновлений от бота (проверка команды /start)
+            url = f"https://api.telegram.org/bot{BOT_TOKEN}/getUpdates"
+            response = requests.get(url).json()
+            for update in response.get('result', []):
+                handle_command(update)
         except Exception as e:
             send_message(f"⚠ Ошибка: {e}")
         time.sleep(900)  # 15 минут
