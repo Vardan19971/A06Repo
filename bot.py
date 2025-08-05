@@ -99,8 +99,8 @@ if __name__ == "__main__":
             # Проверка входящих команд
             url = f"https://api.telegram.org/bot{BOT_TOKEN}/getUpdates?offset={offset}"
             response = requests.get(url, timeout=10).json()
-for update 
-in response.get('result', []):
+
+            for update in response.get('result', []):
                 message = update.get('message')
                 if message and message.get('text') == "/start":
                     send_message("✅ Бот работает!")
@@ -118,4 +118,3 @@ in response.get('result', []):
             send_message(f"⚠ Общая ошибка: {e}")
 
         time.sleep(120)  # каждые 2 минуты
-
