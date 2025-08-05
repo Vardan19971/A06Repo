@@ -82,7 +82,7 @@ def check_ozon():
         send_message(f"⚠ Ошибка Ozon: {e}")
 
 # --- ЗАПУСК ---
-if name == "main":
+if __name__ == "__main__":
     send_message(f"✅ Бот запущен. Лимит: {PRICE_LIMIT_AMD} драм. Проверка каждые 2 минуты.")
     offset = 0
     while True:
@@ -103,3 +103,4 @@ if name == "main":
             send_message(f"⚠ Общая ошибка: {e}")
 
         time.sleep(120)  # каждые 2 минуты
+
