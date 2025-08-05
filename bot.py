@@ -20,6 +20,7 @@ def send_message(text):
 # --- WildBerries через API ---
 def check_wb():
     """Проверка цен Samsung A06 на WildBerries"""
+    print("=== Проверка WildBerries ===")
     search_url = "https://search.wb.ru/exactmatch/ru/common/v4/search"
     params = {
         "appType": "1",
@@ -39,21 +40,26 @@ def check_wb():
             price_rub = product.get("salePriceU", 0) / 100
             price_amd = int(price_rub / AMD_TO_RUB)
 
+            print(f"WB: {name} — {price_amd} драм")
+
             if "a06" in name.lower() and price_amd <= PRICE_LIMIT_AMD:
                 link = f"https://www.wildberries.ru/catalog/{product.get('id')}/detail.aspx"
                 send_message(f"🔥 WildBerries: {name}\nЦена: {price_amd} драм\nСсылка: {link}")
     except Exception as e:
+        print(f"Ошибка WB: {e}")
         send_message(f"⚠ Ошибка WB: {e}")
 
 # --- Ozon через JSON ---
 def check_ozon():
     """Проверка цен Samsung A06 на Ozon"""
+    print("=== Проверка Ozon ===")
     search_url = "https://www.ozon.ru/search/?from_global=true&text=samsung%20a06"
     try:
         r = requests.get(search_url, headers={"User-Agent": "Mozilla/5.0"}, timeout=10)
         soup = BeautifulSoup(r.text, "html.parser")
         scripts = soup.find_all("script")
 
+        found_any = False
         for script in scripts:
             if "searchResultsV2" in script.text:
                 try:
@@ -69,12 +75,19 @@ def check_ozon():
                         price_rub = product_info.get("price", {}).get("price", 0)
                         price_amd = int(price_rub / AMD_TO_RUB)
 
+                        print(f"Ozon: {name} — {price_amd} драм")
+
                         if "a06" in name.lower() and price_amd <= PRICE_LIMIT_AMD:
                             link = "https://www.ozon.ru" + item.get("link", "")
                             send_message(f"🔥 Ozon: {name}\nЦена: {price_amd} драм\nСсылка: {link}")
+                        found_any = True
                 except Exception:
                     continue
+
+        if not found_any:
+            print("Ozon: товары не найдены (возможно, изменился формат страницы)")
     except Exception as e:
+        print(f"Ошибка Ozon: {e}")
         send_message(f"⚠ Ошибка Ozon: {e}")
 
 # --- ЗАПУСК ---
@@ -86,8 +99,7 @@ if __name__ == "__main__":
             # Проверка входящих команд
             url = f"https://api.telegram.org/bot{BOT_TOKEN}/getUpdates?offset={offset}"
             response = requests.get(url, timeout=10).json()
-
-            for update in response.get('result', []):
+for update in response.get('result', []):
                 message = update.get('message')
                 if message and message.get('text') == "/start":
                     send_message("✅ Бот работает!")
@@ -97,8 +109,11 @@ if __name__ == "__main__":
             check_wb()
             check_ozon()
 
+            # Сообщение, что цикл завершён
+            send_message("🔍 Проверка завершена")
+
         except Exception as e:
+            print(f"Общая ошибка: {e}")
             send_message(f"⚠ Общая ошибка: {e}")
 
         time.sleep(120)  # каждые 2 минуты
-
