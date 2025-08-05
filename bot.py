@@ -4,7 +4,7 @@ import os
 import json
 from urllib.parse import unquote
 
-BOT_TOKEN = os.getenv("BOT_TOKEN")      # Токен бота из переменных окружения
+BOT_TOKEN = os.getenv("BOT_TOKEN")      # Токен бота
 USER_ID = int(os.getenv("USER_ID"))     # Твой Telegram ID
 PRICE_LIMIT_RUB = 7700                   # Лимит цены в рублях
 
@@ -55,7 +55,17 @@ def check_ozon():
     params = {
         "url": "/category/telefony-i-smart-chasy-15501/?category_was_predicted=true&deny_category_prediction=true&from_global=true&text=samsung+a06"
     }
-    headers = {"User-Agent": "Mozilla/5.0"}
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36",
+        "Accept": "application/json, text/plain, */*",
+        "Accept-Language": "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7",
+        "Referer": "https://www.ozon.ru/category/telefony-i-smart-chasy-15501/",
+        "Origin": "https://www.ozon.ru",
+        "Connection": "keep-alive",
+        "Sec-Fetch-Site": "same-origin",
+        "Sec-Fetch-Mode": "cors",
+        "Sec-Fetch-Dest": "empty",
+    }
     try:
         r = requests.get(url, params=params, headers=headers, timeout=10)
         r.raise_for_status()
@@ -88,7 +98,6 @@ if __name__ == "__main__":
     offset = 0
     while True:
         try:
-            # Обработка команд /start и др. из Telegram
             updates = requests.get(f"https://api.telegram.org/bot{BOT_TOKEN}/getUpdates?offset={offset}", timeout=10).json()
             for update in updates.get("result", []):
                 message = update.get("message")
@@ -103,4 +112,4 @@ if __name__ == "__main__":
             print(f"Общая ошибка: {e}")
             send_message(f"⚠ Общая ошибка: {e}")
 
-        time.sleep(120)  # Проверять каждые 2 минуты
+        time.sleep(120)  # Проверяем каждые 2 минуты
