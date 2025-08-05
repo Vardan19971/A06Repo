@@ -35,30 +35,21 @@ def get_random_headers():
     """Возвращает случайный набор заголовков."""
     return {
         "User-Agent": random.choice(user_agents),
-        "Accept": "application/json, text/plain, */*",
+        "Accept": "*/*",
         "Accept-Language": "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7",
         "Connection": "keep-alive"
     }
 
 def check_wildberries():
-    """Проверяет цены на Wildberries."""
+    """Проверяет цены на Wildberries, используя другой API."""
     print(f"=== Проверка Wildberries на {SEARCH_QUERY} ===")
-    url = "https://catalog.wb.ru/catalog/exactmatch/v4/products"
-    params = {
-        "appType": 1,
-        "curr": "rub",
-        "dest": -1257723,
-        "regions": "80,38,4,64,83,33,68,70,69,30,22,66,48,1,31,6,40,71",
-        "query": SEARCH_QUERY,
-        "resultset": "catalog",
-        "spp": 29
-    }
-
+    url = f"https://search.wb.ru/exactmatch/ru/common/v4/search?appType=1&curr=rub&dest=123585351&query={SEARCH_QUERY}&resultset=catalog&sort=popular&spp=30"
+    
     try:
-        response = requests.get(url, params=params, headers=get_random_headers(), timeout=15)
+        response = requests.get(url, headers=get_random_headers(), timeout=15)
         response.raise_for_status()
         data = response.json()
-
+        
         products = data.get("data", {}).get("products", [])
         if not products:
             print("WB: Товары не найдены.")
@@ -67,6 +58,7 @@ def check_wildberries():
         for product in products:
             name = product.get("name", "Название не найдено")
             price_in_rub = product.get("salePriceU", 0) / 100
+            
             if price_in_rub <= PRICE_LIMIT_RUB and SEARCH_QUERY.lower() in name.lower():
                 product_id = product.get("id")
                 link = f"https://www.wildberries.ru/catalog/{product_id}/detail.aspx"
@@ -81,51 +73,52 @@ def check_wildberries():
         send_message(f"⚠ *Ошибка Wildberries:* Произошла непредвиденная ошибка.")
 
 def check_ozon():
-    """Проверяет цены на Ozon."""
+    """Проверяет цены на Ozon, используя другой подход."""
     print(f"=== Проверка Ozon на {SEARCH_QUERY} ===")
-    url = "https://www.ozon.ru/search/"
+    url = "https://www.ozon.ru/api/composer-api.bx/page/json/v2"
     params = {
-        "text": SEARCH_QUERY
+        "url": f"/search/?text={SEARCH_QUERY.replace(' ', '+')}"
     }
     
     headers = {
         "User-Agent": random.choice(user_agents),
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+        "Accept": "application/json, text/plain, */*",
         "Accept-Language": "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7",
-        "Connection": "keep-alive",
-        "Upgrade-Insecure-Requests": "1"
+        "Referer": "https://www.ozon.ru/",
+        "Origin": "https://www.ozon.ru",
+        "Connection": "keep-alive"
     }
 
     try:
         response = requests.get(url, params=params, headers=headers, timeout=15)
         response.raise_for_status()
+        data = response.json()
         
-        # Ozon теперь часто отдаёт JS-код. Проще найти данные в HTML-странице.
-        if "catalogItems" in response.text:
-            start_index = response.text.find('"catalogItems":[') + len('"catalogItems":[') -1
-            end_index = response.text.find('],"filters"', start_index)
-            
-            json_str = response.text[start_index:end_index] + "]"
-            
-            products_data = json.loads(json_str)
-            found_product = False
-            
-            for item in products_data:
-                name = item.get("mainState", [{}])[0].get("title", "Название не найдено")
-                price = item.get("mainState", [{}])[1].get("atom", {}).get("price", {}).get("price", 0)
-                
-                if price and price <= PRICE_LIMIT_RUB and SEARCH_QUERY.lower() in name.lower():
-                    link = "https://www.ozon.ru" + item.get("action", {}).get("link", "")
-                    msg = f"🔥 *Ozon*\n\n*Товар:* {name}\n*Цена:* {price} ₽\n[Ссылка на товар]({link})"
-                    send_message(msg)
-                    found_product = True
-            
-            if not found_product:
-                print("Ozon: Товары не найдены.")
-        else:
-            print("Ozon: Не удалось найти данные о товарах на странице.")
-            send_message(f"⚠ *Ошибка Ozon:* Структура страницы изменилась. Бот требует обновления.")
+        widget_states = data.get("widgetStates", {})
+        found_product = False
+        
+        for key, value in widget_states.items():
+            if "searchResultsV2" in key:
+                try:
+                    widget_data = json.loads(unquote(value))
+                    items = widget_data.get("items", [])
+                    
+                    for item in items:
+                        product_info = item.get("cellTrackingInfo", {}).get("product", {})
+                        name = product_info.get("title", "Название не найдено")
+                        price = product_info.get("price", {}).get("price", 0)
+                        
+                        if price and price <= PRICE_LIMIT_RUB and SEARCH_QUERY.lower() in name.lower():
+                            link = f"https://www.ozon.ru{item.get('link')}"
+                            msg = f"🔥 *Ozon*\n\n*Товар:* {name}\n*Цена:* {price} ₽\n[Ссылка на товар]({link})"
+                            send_message(msg)
+                            found_product = True
+                except (json.JSONDecodeError, KeyError) as e:
+                    print(f"Ошибка при парсинге данных Ozon: {e}")
 
+        if not found_product:
+            print("Ozon: Товары не найдены.")
+            
     except requests.exceptions.RequestException as e:
         print(f"Ошибка запроса Ozon: {e}")
         send_message(f"⚠ *Ошибка Ozon:* Не удалось получить данные. Попробуйте снова.")
@@ -139,10 +132,11 @@ if __name__ == "__main__":
     while True:
         try:
             check_wildberries()
+            time.sleep(10)  # Задержка между запросами к разным сайтам
             check_ozon()
         except Exception as e:
             print(f"Общая ошибка в основном цикле: {e}")
             send_message(f"⚠ *Критическая ошибка:* Произошла непредвиденная ошибка в основном цикле бота. Проверьте логи.")
             
         print("---")
-        time.sleep(120)  # Пауза 2 минуты
+        time.sleep(110) # 10 секунд + 110 = 120 секунд (2 минуты)
