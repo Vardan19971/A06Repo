@@ -6,7 +6,7 @@ import os
 # --- НАСТРОЙКИ ---
 BOT_TOKEN = os.getenv("BOT_TOKEN")  # Токен из переменных окружения
 USER_ID = int(os.getenv("USER_ID"))  # Твой Telegram user_id
-PRICE_LIMIT_AMD = 30000
+PRICE_LIMIT_AMD = 36000
 AMD_TO_RUB = 0.18  # Примерный курс (1 драм = 0.18 руб.), можно сделать автообновление
 
 # --- ФУНКЦИИ ДЛЯ ОТПРАВКИ ---
@@ -88,3 +88,4 @@ if __name__ == "__main__":
             send_message(f"⚠ Ошибка: {e}")
         
         time.sleep(5)  # Пауза в 5 секунд перед следующим запросом
+
